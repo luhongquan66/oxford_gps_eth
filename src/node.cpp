@@ -75,7 +75,8 @@ static inline double SQUARE(double x)
 #endif
 
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
-                                ros::Publisher &pub_imu, ros::Publisher &pub_odom, const std::string &frame_id)
+                                ros::Publisher &pub_imu, ros::Publisher &pub_odom, const std::string &frame_id,
+                                const std::string &frame_id_vel)
 {
   static uint8_t fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
   static uint8_t position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -224,7 +225,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
 
     geometry_msgs::TwistWithCovarianceStamped msg_vel;
     msg_vel.header.stamp = stamp;
-    msg_vel.header.frame_id = "utm";
+    msg_vel.header.frame_id = frame_id_vel;
     msg_vel.twist.twist.linear.x = (double)packet->vel_north * 1e-4;
     msg_vel.twist.twist.linear.y = (double)packet->vel_east * -1e-4;
     msg_vel.twist.twist.linear.z = (double)packet->vel_down * -1e-4;
@@ -270,7 +271,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     
     nav_msgs::Odometry msg_odom;
     msg_odom.header.stamp = stamp;
-    msg_odom.header.frame_id = "utm";
+    msg_odom.header.frame_id = frame_id_vel;
     msg_odom.child_frame_id = "base_link";
     msg_odom.twist = msg_vel.twist;
     pub_odom.publish(msg_odom);
@@ -298,6 +299,9 @@ int main(int argc, char **argv)
 
   std::string frame_id = "gps";
   priv_nh.getParam("frame_id", frame_id);
+
+  std::string frame_id_vel = "utm";
+  priv_nh.getParam("frame_id_vel", frame_id_vel);
 
   if (port > UINT16_MAX) {
     ROS_ERROR("Port %u greater than maximum value of %u", port, UINT16_MAX);
@@ -335,7 +339,7 @@ int main(int argc, char **argv)
             first = false;
             ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
           }
-          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, frame_id);
+          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, frame_id, frame_id_vel);
         }
       }
 
