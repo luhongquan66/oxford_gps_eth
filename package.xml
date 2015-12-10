@@ -6,8 +6,12 @@
     Ethernet interface to the Oxford GPS (NCOM packet structure)
   </description>
 
-  <maintainer email="khallenbeck@dataspeedinc.com">Kevin Hallenbeck</maintainer>
+  <license>BSD</license>
   <author email="khallenbeck@dataspeedinc.com">Kevin Hallenbeck</author>
+  <maintainer email="khallenbeck@dataspeedinc.com">Kevin Hallenbeck</maintainer>
+  <url type="website">http://dataspeedinc.com</url>
+  <url type="repository">https://bitbucket.org/dataspeedinc/oxford_gps_eth</url>
+  <url type="bugtracker">https://bitbucket.org/dataspeedinc/oxford_gps_eth/issues</url>
 
   <license>Proprietary</license>
 
@@ -22,8 +26,5 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf</run_depend>
-
-  <export>
-  </export>
 
 </package>
