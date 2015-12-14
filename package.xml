@@ -9,7 +9,7 @@
   <license>BSD</license>
   <author email="khallenbeck@dataspeedinc.com">Kevin Hallenbeck</author>
   <maintainer email="khallenbeck@dataspeedinc.com">Kevin Hallenbeck</maintainer>
-  <url type="website">http://dataspeedinc.com</url>
+  <url type="website">http://wiki.ros.org/oxford_gps_eth</url>
   <url type="repository">https://bitbucket.org/dataspeedinc/oxford_gps_eth</url>
   <url type="bugtracker">https://bitbucket.org/dataspeedinc/oxford_gps_eth/issues</url>
 
