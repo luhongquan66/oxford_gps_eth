@@ -2,8 +2,8 @@
 Changelog for package oxford_gps_eth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.2 (2015-12-14)
+------------------
 * Added fix for Ubuntu Saucy
 * Contributors: Kevin Hallenbeck
 
