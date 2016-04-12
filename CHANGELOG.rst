@@ -2,8 +2,8 @@
 Changelog for package oxford_gps_eth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.4 (2016-04-11)
+------------------
 * Updated license year for 2016
 * Contributors: Kevin Hallenbeck
 
