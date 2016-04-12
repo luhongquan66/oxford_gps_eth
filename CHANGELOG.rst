@@ -2,6 +2,11 @@
 Changelog for package oxford_gps_eth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Updated license year for 2016
+* Contributors: Kevin Hallenbeck
+
 0.0.3 (2015-12-21)
 ------------------
 * Added fix for Ubuntu Saucy
