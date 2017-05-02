@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015-2016, Dataspeed Inc.
+ *  Copyright (c) 2015-2017, Dataspeed Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
+// ROS
 #include <ros/ros.h>
 
 // ROS messages
@@ -359,7 +360,7 @@ int main(int argc, char **argv)
   int fd;
   sockaddr_in sock;
   if (openSocket(interface, ip_addr, port, &fd, &sock)) {
-    // Set up Publishers
+    // Setup Publishers
     ros::Publisher pub_fix = node.advertise<sensor_msgs::NavSatFix>("gps/fix", 2);
     ros::Publisher pub_vel = node.advertise<geometry_msgs::TwistWithCovarianceStamped>("gps/vel", 2);
     ros::Publisher pub_imu = node.advertise<sensor_msgs::Imu>("imu/data", 2);
@@ -382,7 +383,7 @@ int main(int argc, char **argv)
         }
       }
 
-      // handle callbacks
+      // Handle callbacks
       ros::spinOnce();
     }
 
