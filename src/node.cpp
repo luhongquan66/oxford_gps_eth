@@ -284,7 +284,6 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     msg_imu.linear_acceleration.x = (double)packet->accel_x * 1e-4;
     msg_imu.linear_acceleration.y = (double)packet->accel_y * 1e-4;
     msg_imu.linear_acceleration.z = (double)packet->accel_z * -1e-4;
-    msg_imu.linear_acceleration_covariance[0] = -1;
     msg_imu.angular_velocity.x = (double)packet->gyro_x * 1e-5;
     msg_imu.angular_velocity.y = (double)packet->gyro_y * 1e-5;
     msg_imu.angular_velocity.z = (double)packet->gyro_z * -1e-5;
