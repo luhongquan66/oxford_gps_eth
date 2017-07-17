@@ -266,8 +266,8 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     geometry_msgs::TwistWithCovarianceStamped msg_vel;
     msg_vel.header.stamp = stamp;
     msg_vel.header.frame_id = frame_id_vel;
-    msg_vel.twist.twist.linear.x = (double)packet->vel_north * 1e-4;
-    msg_vel.twist.twist.linear.y = (double)packet->vel_east * -1e-4;
+    msg_vel.twist.twist.linear.x = (double)packet->vel_east * 1e-4;
+    msg_vel.twist.twist.linear.y = (double)packet->vel_north * 1e-4;
     msg_vel.twist.twist.linear.z = (double)packet->vel_down * -1e-4;
     if (velocity_covariance_type > sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN) {
       msg_vel.twist.covariance[0] = velocity_covariance[0]; // x
