@@ -2,8 +2,8 @@
 Changelog for package oxford_gps_eth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.5 (2017-08-10)
+------------------
 * Fixed velocity utm east-north-up orientation
 * Properly handle unknown covariance and fields that are not present
 * Updated license for year 2017
