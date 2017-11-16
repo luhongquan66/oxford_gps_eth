@@ -21,4 +21,8 @@
   <depend>nav_msgs</depend>
   <depend>tf</depend>
 
+  <exec_depend>roslaunch</exec_depend>
+
+  <test_depend>roslaunch</test_depend>
+
 </package>

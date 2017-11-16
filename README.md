@@ -22,7 +22,12 @@ Tested with the RT3000v2 receiver.
 ```
 rosrun oxford_gps_eth gps_node
 ```
+OR
+```
+roslaunch oxford_gps_eth gps.launch
+```
 
 ### FAQ
 I see ```Connected to Oxford GPS at <ip_address>:3000```, but no messages are published.  
 Invalid data is not published. Move faster than 5 m/s to initialize the sensor.
+
