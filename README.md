@@ -13,8 +13,8 @@ Tested with the RT3000v2 receiver.
 
 ### Parameters
 - `interface` Restrict to single network interface, example: `eth0`. Default `<empty>`
-- `ip_address` Restrict to single ip address. Default `<empty>`
-- `port` UDP listen port. Default `3000`
+- `ip_address` Local IP listen address. Default `<empty>`
+- `port` Local UDP listen port. Default `3000`
 - `frame_id` The frame-ID for gps position and imu. Default `gps`
 - `frame_id_vel` The frame-ID for gps velocity. Default `utm`
 
