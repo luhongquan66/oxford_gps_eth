@@ -105,10 +105,7 @@ static inline int readSocket(int fd, unsigned int timeout, void *data, size_t si
   return -1;
 }
 
-static inline double SQUARE(double x)
-{
-  return x * x;
-}
+static inline double SQUARE(double x) { return x * x; }
 
 #ifndef OXFORD_DISPLAY_INFO
 #define OXFORD_DISPLAY_INFO 0
