@@ -508,7 +508,7 @@ TEST(Main, imu)
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);
-  ros::init(argc, argv, "test_lazy_subscriber");
+  ros::init(argc, argv, "test");
 
   // Parameters
   ros::NodeHandle priv_nh("~");
