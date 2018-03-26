@@ -2,8 +2,8 @@
 Changelog for package oxford_gps_eth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.6 (2018-03-26)
+------------------
 * Changed default listen address from broadcast to any
 * Added unit tests and rostests
 * Added launch file
