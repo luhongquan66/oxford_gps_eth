@@ -41,11 +41,15 @@
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 
-// Tf Quaternions
+// Tf
 #include <tf/LinearMath/Quaternion.h>
+#include <tf/transform_datatypes.h>
 
 // Packet structure
 #include "dispatch.h"
+
+// UTM conversion
+#include <gps_common/conversions.h>
 
 // Ethernet
 #include <arpa/inet.h>
@@ -111,6 +115,12 @@ static inline double SQUARE(double x) { return x * x; }
 #define OXFORD_DISPLAY_INFO 0
 #endif
 
+double getZoneMeridian(const std::string& utm_zone)
+{
+  int zone_number = std::atoi(utm_zone.substr(0,2).c_str());
+  return (zone_number == 0) ? 0.0 : (zone_number - 1) * 6.0 - 177.0;
+}
+
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
                                 ros::Publisher &pub_imu, ros::Publisher &pub_odom, const std::string &frame_id,
                                 const std::string &frame_id_vel)
@@ -134,7 +144,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
           case MODE_RTK_INTEGER:
           case MODE_RTK_FLOAT_PP:
           case MODE_RTK_INTEGER_PP:
-          case MODE_DOPLER_PP:
+          case MODE_DOPPLER_PP:
           case MODE_SPS_PP:
             fix_status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
             break;
@@ -150,7 +160,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
             break;
           case MODE_NONE:
           case MODE_SEARCH:
-          case MODE_DOPLER:
+          case MODE_DOPPLER:
           case MODE_NO_DATA:
           case MODE_BLANKED:
           case MODE_NOT_RECOGNISED:
@@ -160,7 +170,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
             break;
         }
 #if OXFORD_DISPLAY_INFO
-        ROS_INFO("Num Sats: %u, Position mode: %u, Velocity mode: %u, Orientation mode: %u",
+      ROS_INFO("Num Sats: %u, Position mode: %u, Velocity mode: %u, Orientation mode: %u",
                  packet->chan.chan0.num_sats,
                  packet->chan.chan0.position_mode,
                  packet->chan.chan0.velocity_mode,
@@ -244,6 +254,24 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
         break;
     }
 
+    // Convert lat/lon into UTM x, y, and zone
+    double utm_x;
+    double utm_y;
+    std::string utm_zone;
+    gps_common::LLtoUTM(180.0 / M_PI * packet->latitude, 180.0 / M_PI * packet->longitude, utm_y, utm_x, utm_zone);
+
+    // Compute convergence angle and heading in ENU and UTM grid
+    double central_meridian = M_PI / 180.0 * getZoneMeridian(utm_zone);
+    double convergence_angle = atan(tan(packet->longitude - central_meridian) * sin(packet->latitude));
+    double enu_heading = M_PI_2 - (double)packet->heading * 1e-6;
+    double grid_heading = enu_heading + convergence_angle;
+
+    // Compute local frame velocity for odometry message
+    double east_vel = (double)packet->vel_east * 1e-4;
+    double north_vel = (double)packet->vel_north * 1e-4;
+    double local_x_vel = east_vel * cos(enu_heading) + north_vel * sin(enu_heading);
+    double local_y_vel = -east_vel * sin(enu_heading) + north_vel * cos(enu_heading);
+
     sensor_msgs::NavSatFix msg_fix;
     msg_fix.header.stamp = stamp;
     msg_fix.header.frame_id = frame_id;
@@ -263,8 +291,8 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     geometry_msgs::TwistWithCovarianceStamped msg_vel;
     msg_vel.header.stamp = stamp;
     msg_vel.header.frame_id = frame_id_vel;
-    msg_vel.twist.twist.linear.x = (double)packet->vel_east * 1e-4;
-    msg_vel.twist.twist.linear.y = (double)packet->vel_north * 1e-4;
+    msg_vel.twist.twist.linear.x = east_vel;
+    msg_vel.twist.twist.linear.y = north_vel;
     msg_vel.twist.twist.linear.z = (double)packet->vel_down * -1e-4;
     if (velocity_covariance_type > sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN) {
       msg_vel.twist.covariance[0] = velocity_covariance[0]; // x
@@ -274,16 +302,16 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     pub_vel.publish(msg_vel);
 
     tf::Quaternion q;
-    q.setRPY((double)packet->roll * 1e-6, (double)packet->pitch * 1e-6, (double)packet->heading * -1e-6);
+    q.setRPY((double)packet->roll * 1e-6, (double)packet->pitch * 1e-6, enu_heading);
     sensor_msgs::Imu msg_imu;
     msg_imu.header.stamp = stamp;
     msg_imu.header.frame_id = frame_id;
     msg_imu.linear_acceleration.x = (double)packet->accel_x * 1e-4;
     msg_imu.linear_acceleration.y = (double)packet->accel_y * 1e-4;
-    msg_imu.linear_acceleration.z = (double)packet->accel_z * -1e-4;
+    msg_imu.linear_acceleration.z = (double)packet->accel_z * 1e-4;
     msg_imu.angular_velocity.x = (double)packet->gyro_x * 1e-5;
     msg_imu.angular_velocity.y = (double)packet->gyro_y * 1e-5;
-    msg_imu.angular_velocity.z = (double)packet->gyro_z * -1e-5;
+    msg_imu.angular_velocity.z = (double)packet->gyro_z * 1e-5;
     msg_imu.orientation.w = q.w();
     msg_imu.orientation.x = q.x();
     msg_imu.orientation.y = q.y();
@@ -292,25 +320,39 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
       msg_imu.orientation_covariance[0] = orientation_covariance[0]; // x
       msg_imu.orientation_covariance[4] = orientation_covariance[1]; // y
       msg_imu.orientation_covariance[8] = orientation_covariance[2]; // z
-    } else {
-      msg_imu.orientation_covariance[0] = 0.0174532925; // x
-      msg_imu.orientation_covariance[4] = 0.0174532925; // y
-      msg_imu.orientation_covariance[8] = 0.0174532925; // z
     }
-    msg_imu.angular_velocity_covariance[0] = 0.000436332313; // x
-    msg_imu.angular_velocity_covariance[4] = 0.000436332313; // y
-    msg_imu.angular_velocity_covariance[8] = 0.000436332313; // x
-    msg_imu.linear_acceleration_covariance[0] = 0.0004; // x
-    msg_imu.linear_acceleration_covariance[4] = 0.0004; // y
-    msg_imu.linear_acceleration_covariance[8] = 0.0004; // z
     pub_imu.publish(msg_imu);
     
     nav_msgs::Odometry msg_odom;
     msg_odom.header.stamp = stamp;
-    msg_odom.header.frame_id = frame_id_vel;
-    msg_odom.child_frame_id = "base_link";
-    msg_odom.twist = msg_vel.twist;
+    msg_odom.header.frame_id = "utm";
+    msg_odom.child_frame_id = frame_id;
+    msg_odom.pose.pose.position.x = utm_x;
+    msg_odom.pose.pose.position.y = utm_y;
+    msg_odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(grid_heading);
+
+    // Project position standard deviations into UTM frame, accounting for convergence angle
+    double std_east = (double)packet->chan.chan3.acc_position_east * 1e-3;
+    double std_north = (double)packet->chan.chan3.acc_position_north * 1e-3;
+    double std_x = std_east * cos(convergence_angle) - std_north * sin(convergence_angle);
+    double std_y = std_north * sin(convergence_angle) + std_east * cos(convergence_angle);
+
+    // Project velocity standard deviations into local frame
+    double std_east_vel = (double)packet->chan.chan4.acc_velocity_east * 1e-3;
+    double std_north_vel = (double)packet->chan.chan4.acc_velocity_north * 1e-3;
+    double std_x_vel = std_east_vel * cos(enu_heading) + std_north_vel * sin(enu_heading);
+    double std_y_vel = -std_east_vel * cos(enu_heading) + std_north_vel * sin(enu_heading);
+
+    msg_odom.pose.covariance[0*6 + 0] = SQUARE(std_x);
+    msg_odom.pose.covariance[1*6 + 1] = SQUARE(std_y);
+    msg_odom.pose.covariance[5*6 + 5] = orientation_covariance[2];
+    msg_odom.twist.twist.linear.x = local_x_vel;
+    msg_odom.twist.twist.linear.y = local_y_vel;
+    msg_odom.twist.twist.angular.z = msg_imu.angular_velocity.z;
+    msg_odom.twist.covariance[0*6 + 0] = SQUARE(std_x_vel);
+    msg_odom.twist.covariance[1*6 + 1] = SQUARE(std_y_vel);
     pub_odom.publish(msg_odom);
+
 #if OXFORD_DISPLAY_INFO
   } else {
     ROS_WARN("Nav Status: %u", packet->nav_status);
@@ -336,7 +378,7 @@ int main(int argc, char **argv)
   std::string frame_id = "gps";
   priv_nh.getParam("frame_id", frame_id);
 
-  std::string frame_id_vel = "utm";
+  std::string frame_id_vel = "enu";
   priv_nh.getParam("frame_id_vel", frame_id_vel);
 
   if (port > UINT16_MAX) {
