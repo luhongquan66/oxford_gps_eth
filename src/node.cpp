@@ -40,6 +40,7 @@
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/String.h>
 
 // Tf
 #include <tf/LinearMath/Quaternion.h>
@@ -115,6 +116,24 @@ static inline double SQUARE(double x) { return x * x; }
 #define OXFORD_DISPLAY_INFO 0
 #endif
 
+std::map<int, std::string> pos_type_map;
+std::string pos_type;
+void initPosTypeMap(std::map<int, std::string>& map)
+{
+  map[MODE_NONE] = map[MODE_NO_DATA] = map[MODE_BLANKED] = map[MODE_NOT_RECOGNISED] = map[MODE_UNKNOWN] =  "NONE";
+  map[MODE_SEARCH] = "SEARCHING";
+  map[MODE_DOPPLER] = map[MODE_DOPPLER_PP] = "DOPPLER";
+  map[MODE_SPS] = map[MODE_SPS_PP] = "POINT_POSITION";
+  map[MODE_DIFFERENTIAL] = map[MODE_DIFFERENTIAL_PP] = "DIFF_PSEUDORANGE";
+  map[MODE_RTK_FLOAT] = map[MODE_RTK_FLOAT_PP] = "RTK_FLOAT";
+  map[MODE_RTK_INTEGER] = map[MODE_RTK_INTEGER_PP] = "RTK_INTEGER";
+  map[MODE_WAAS] = "WAAS";
+  map[MODE_OMNISTAR_VBS] = "OMNISTAR_VBS";
+  map[MODE_OMNISTAR_HP] = "OMNISTAR_HP";
+  map[MODE_OMNISTAR_XP] = "OMNISTAR_XP";
+  map[MODE_CDGPS] = "CANADA_DGPS";
+}
+
 double getZoneMeridian(const std::string& utm_zone)
 {
   int zone_number = std::atoi(utm_zone.substr(0,2).c_str());
@@ -122,8 +141,8 @@ double getZoneMeridian(const std::string& utm_zone)
 }
 
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
-                                ros::Publisher &pub_imu, ros::Publisher &pub_odom, const std::string &frame_id,
-                                const std::string &frame_id_vel)
+                                ros::Publisher &pub_imu, ros::Publisher &pub_odom, ros::Publisher &pub_pos_type,
+                                const std::string &frame_id, const std::string &frame_id_vel)
 {
   static uint8_t fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
   static uint8_t position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -132,127 +151,132 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
   static double velocity_covariance[3];
   static uint8_t orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
   static double orientation_covariance[3];
-  if (packet->nav_status == 4) {
-    ros::Time stamp = ros::Time::now();
 
-    switch (packet->channel) {
-      case 0:
-        switch (packet->chan.chan0.position_mode) {
-          case MODE_DIFFERENTIAL:
-          case MODE_DIFFERENTIAL_PP:
-          case MODE_RTK_FLOAT:
-          case MODE_RTK_INTEGER:
-          case MODE_RTK_FLOAT_PP:
-          case MODE_RTK_INTEGER_PP:
-          case MODE_DOPPLER_PP:
-          case MODE_SPS_PP:
-            fix_status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
-            break;
-          case MODE_OMNISTAR_VBS:
-          case MODE_OMNISTAR_HP:
-          case MODE_OMNISTAR_XP:
-          case MODE_WAAS:
-          case MODE_CDGPS:
-            fix_status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
-            break;
-          case MODE_SPS:
-            fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
-            break;
-          case MODE_NONE:
-          case MODE_SEARCH:
-          case MODE_DOPPLER:
-          case MODE_NO_DATA:
-          case MODE_BLANKED:
-          case MODE_NOT_RECOGNISED:
-          case MODE_UNKNOWN:
-          default:
-            fix_status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-            break;
-        }
+  switch (packet->channel) {
+    case 0:
+      pos_type = pos_type_map[packet->chan.chan0.position_mode];
+      switch (packet->chan.chan0.position_mode) {
+        case MODE_DIFFERENTIAL:
+        case MODE_DIFFERENTIAL_PP:
+        case MODE_RTK_FLOAT:
+        case MODE_RTK_INTEGER:
+        case MODE_RTK_FLOAT_PP:
+        case MODE_RTK_INTEGER_PP:
+        case MODE_DOPPLER_PP:
+        case MODE_SPS_PP:
+          fix_status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
+          break;
+        case MODE_OMNISTAR_VBS:
+        case MODE_OMNISTAR_HP:
+        case MODE_OMNISTAR_XP:
+        case MODE_WAAS:
+        case MODE_CDGPS:
+          fix_status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
+          break;
+        case MODE_SPS:
+          fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
+          break;
+        case MODE_NONE:
+        case MODE_SEARCH:
+        case MODE_DOPPLER:
+        case MODE_NO_DATA:
+        case MODE_BLANKED:
+        case MODE_NOT_RECOGNISED:
+        case MODE_UNKNOWN:
+        default:
+          fix_status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
+          break;
+      }
 #if OXFORD_DISPLAY_INFO
-      ROS_INFO("Num Sats: %u, Position mode: %u, Velocity mode: %u, Orientation mode: %u",
+    ROS_INFO("Num Sats: %u, Position mode: %u, Velocity mode: %u, Orientation mode: %u",
                  packet->chan.chan0.num_sats,
                  packet->chan.chan0.position_mode,
                  packet->chan.chan0.velocity_mode,
                  packet->chan.chan0.orientation_mode);
 #endif
-        break;
-      case 3:
-        if (packet->chan.chan3.age < 150) {
-          position_covariance[0] = SQUARE((double)packet->chan.chan3.acc_position_east * 1e-3);
-          position_covariance[1] = SQUARE((double)packet->chan.chan3.acc_position_north * 1e-3);
-          position_covariance[2] = SQUARE((double)packet->chan.chan3.acc_position_down * 1e-3);
-          position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+      break;
+    case 3:
+      if (packet->chan.chan3.age < 150) {
+        position_covariance[0] = SQUARE((double)packet->chan.chan3.acc_position_east * 1e-3);
+        position_covariance[1] = SQUARE((double)packet->chan.chan3.acc_position_north * 1e-3);
+        position_covariance[2] = SQUARE((double)packet->chan.chan3.acc_position_down * 1e-3);
+        position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
-          ROS_INFO("Position accuracy: North: %umm, East: %umm, Down: %umm",
+        ROS_INFO("Position accuracy: North: %umm, East: %umm, Down: %umm",
                    packet->chan.chan3.acc_position_north,
                    packet->chan.chan3.acc_position_east,
                    packet->chan.chan3.acc_position_down);
 #endif
-        } else {
-          position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
-        }
-        break;
-      case 4:
-        if (packet->chan.chan4.age < 150) {
-          velocity_covariance[0] = SQUARE((double)packet->chan.chan4.acc_velocity_east * 1e-3);
-          velocity_covariance[1] = SQUARE((double)packet->chan.chan4.acc_velocity_north * 1e-3);
-          velocity_covariance[2] = SQUARE((double)packet->chan.chan4.acc_velocity_down * 1e-3);
-          velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+      } else {
+        position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+      }
+      break;
+    case 4:
+      if (packet->chan.chan4.age < 150) {
+        velocity_covariance[0] = SQUARE((double)packet->chan.chan4.acc_velocity_east * 1e-3);
+        velocity_covariance[1] = SQUARE((double)packet->chan.chan4.acc_velocity_north * 1e-3);
+        velocity_covariance[2] = SQUARE((double)packet->chan.chan4.acc_velocity_down * 1e-3);
+        velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
-          ROS_INFO("Velocity accuracy: North: %umm/s, East: %umm/s, Down: %umm/s",
+        ROS_INFO("Velocity accuracy: North: %umm/s, East: %umm/s, Down: %umm/s",
                    packet->chan.chan4.acc_velocity_north,
                    packet->chan.chan4.acc_velocity_east,
                    packet->chan.chan4.acc_velocity_down);
 #endif
-        } else {
-          velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
-        }
-        break;
+      } else {
+        velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+      }
+      break;
 
-      case 5:
-        if (packet->chan.chan5.age < 150) {
-          orientation_covariance[0] = SQUARE((double)packet->chan.chan5.acc_roll * 1e-5);
-          orientation_covariance[1] = SQUARE((double)packet->chan.chan5.acc_pitch * 1e-5);
-          orientation_covariance[2] = SQUARE((double)packet->chan.chan5.acc_heading * 1e-5);
-          orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+    case 5:
+      if (packet->chan.chan5.age < 150) {
+        orientation_covariance[0] = SQUARE((double)packet->chan.chan5.acc_roll * 1e-5);
+        orientation_covariance[1] = SQUARE((double)packet->chan.chan5.acc_pitch * 1e-5);
+        orientation_covariance[2] = SQUARE((double)packet->chan.chan5.acc_heading * 1e-5);
+        orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
-          ROS_INFO("Velocity accuracy: Heading: %frad, Pitch: %frad, Roll: %frad",
+        ROS_INFO("Velocity accuracy: Heading: %frad, Pitch: %frad, Roll: %frad",
                    (double)packet->chan.chan5.acc_heading * 1e-5,
                    (double)packet->chan.chan5.acc_pitch * 1e-5,
                    (double)packet->chan.chan5.acc_roll * 1e-5);
 #endif
-        } else {
-          orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
-        }
-        break;
-      case 23:
+      } else {
+        orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+      }
+      break;
+    case 23:
 #if OXFORD_DISPLAY_INFO
-        ROS_INFO("Delay: %ums", packet->chan.chan23.delay_ms);
+      ROS_INFO("Delay: %ums", packet->chan.chan23.delay_ms);
 #endif
-        break;
-      case 27:
+      break;
+    case 27:
 #if OXFORD_DISPLAY_INFO
-        ROS_INFO("Heading quality: %u", packet->chan.chan27.heading_quality);
+      ROS_INFO("Heading quality: %u", packet->chan.chan27.heading_quality);
 #endif
-        break;
-      case 37:
+      break;
+    case 37:
 #if OXFORD_DISPLAY_INFO
-        if (packet->chan.chan37.valid) {
+      if (packet->chan.chan37.valid) {
           ROS_INFO("Heading Misalignment: Angle: %frad, Accuracy: %frad",
                    (double)packet->chan.chan37.heading_misalignment_angle * 1e-4,
                    (double)packet->chan.chan37.heading_misalignment_accuracy * 1e-4);
         }
 #endif
-        break;
-      case 48:
+      break;
+    case 48:
 #if OXFORD_DISPLAY_INFO
-        ROS_INFO("HDOP: %0.1f, PDOP: %0.1f",
+      ROS_INFO("HDOP: %0.1f, PDOP: %0.1f",
                  (double)packet->chan.chan48.HDOP * 1e-1,
                  (double)packet->chan.chan48.PDOP * 1e-1);
 #endif
-        break;
-    }
+      break;
+  }
+  std_msgs::String pos_type_msg;
+  pos_type_msg.data = pos_type;
+  pub_pos_type.publish(pos_type_msg);
+
+  if (packet->nav_status == 4) {
+    ros::Time stamp = ros::Time::now();
 
     // Convert lat/lon into UTM x, y, and zone
     double utm_x;
@@ -403,11 +427,13 @@ int main(int argc, char **argv)
     ros::Publisher pub_vel = node.advertise<geometry_msgs::TwistWithCovarianceStamped>("gps/vel", 2);
     ros::Publisher pub_imu = node.advertise<sensor_msgs::Imu>("imu/data", 2);
     ros::Publisher pub_odom = node.advertise<nav_msgs::Odometry>("gps/odom", 2);
+    ros::Publisher pub_pos_type = node.advertise<std_msgs::String>("gps/pos_type", 1);
 
     // Variables
     Packet packet;
     sockaddr source;
     bool first = true;
+    initPosTypeMap(pos_type_map);
 
     // Loop until shutdown
     while (ros::ok()) {
@@ -417,7 +443,7 @@ int main(int argc, char **argv)
             first = false;
             ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
           }
-          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, frame_id, frame_id_vel);
+          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, frame_id, frame_id_vel);
         }
       }
 
