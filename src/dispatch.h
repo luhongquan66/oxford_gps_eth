@@ -40,7 +40,7 @@
 typedef union {
   uint8_t bytes[8];
   struct {
-    uint32_t :32;
+    uint32_t gps_minutes;
     uint8_t num_sats;
     uint8_t position_mode;
     uint8_t velocity_mode;

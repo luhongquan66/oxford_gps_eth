@@ -38,6 +38,7 @@
 // ROS messages
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/TimeReference.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/String.h>
@@ -59,6 +60,11 @@
 #ifndef UINT16_MAX
 #define UINT16_MAX (65535)
 #endif
+
+// GPS time to UTC time parameters
+#define GPS_LEAP_SECONDS 18         // Offset to account for UTC leap seconds (need to increment when UTC changes)
+#define GPS_EPOCH_OFFSET 315964800  // Offset to account for GPS / UTC epoch difference
+
 
 static inline bool openSocket(const std::string &interface, const std::string &ip_addr, uint16_t port, int *fd_ptr, sockaddr_in *sock_ptr)
 {
@@ -134,15 +140,21 @@ void initPosTypeMap(std::map<int, std::string>& map)
   map[MODE_CDGPS] = "CANADA_DGPS";
 }
 
-double getZoneMeridian(const std::string& utm_zone)
+static inline double getZoneMeridian(const std::string& utm_zone)
 {
   int zone_number = std::atoi(utm_zone.substr(0,2).c_str());
   return (zone_number == 0) ? 0.0 : (zone_number - 1) * 6.0 - 177.0;
 }
 
+static inline double toUtcTime(uint32_t gps_minutes, uint16_t gps_ms)
+{
+  return GPS_EPOCH_OFFSET - GPS_LEAP_SECONDS + 60.0 * (double)gps_minutes + 0.001 * (double)gps_ms;
+}
+
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
                                 ros::Publisher &pub_imu, ros::Publisher &pub_odom, ros::Publisher &pub_pos_type,
-                                const std::string &frame_id, const std::string &frame_id_vel)
+                                ros::Publisher &pub_gps_time_ref, const std::string &frame_id,
+                                const std::string &frame_id_vel)
 {
   static uint8_t fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
   static uint8_t position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -152,9 +164,20 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
   static uint8_t orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
   static double orientation_covariance[3];
 
+  ros::Time stamp = ros::Time::now();
+
   switch (packet->channel) {
     case 0:
       pos_type = pos_type_map[packet->chan.chan0.position_mode];
+
+      if (packet->chan.chan0.gps_minutes > 1000) { // Documentation says invalid if < 1000
+        sensor_msgs::TimeReference gps_time_ref_msg;
+        gps_time_ref_msg.source = "gps";
+        gps_time_ref_msg.header.stamp = stamp;
+        gps_time_ref_msg.time_ref = ros::Time(toUtcTime(packet->chan.chan0.gps_minutes, packet->time));
+        pub_gps_time_ref.publish(gps_time_ref_msg);
+      }
+
       switch (packet->chan.chan0.position_mode) {
         case MODE_DIFFERENTIAL:
         case MODE_DIFFERENTIAL_PP:
@@ -276,8 +299,6 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
   pub_pos_type.publish(pos_type_msg);
 
   if (packet->nav_status == 4) {
-    ros::Time stamp = ros::Time::now();
-
     // Convert lat/lon into UTM x, y, and zone
     double utm_x;
     double utm_y;
@@ -427,7 +448,8 @@ int main(int argc, char **argv)
     ros::Publisher pub_vel = node.advertise<geometry_msgs::TwistWithCovarianceStamped>("gps/vel", 2);
     ros::Publisher pub_imu = node.advertise<sensor_msgs::Imu>("imu/data", 2);
     ros::Publisher pub_odom = node.advertise<nav_msgs::Odometry>("gps/odom", 2);
-    ros::Publisher pub_pos_type = node.advertise<std_msgs::String>("gps/pos_type", 1);
+    ros::Publisher pub_pos_type = node.advertise<std_msgs::String>("gps/pos_type", 2);
+    ros::Publisher pub_gps_time_ref = node.advertise<sensor_msgs::TimeReference>("gps/time_ref", 2);
 
     // Variables
     Packet packet;
@@ -443,7 +465,7 @@ int main(int argc, char **argv)
             first = false;
             ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
           }
-          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, frame_id, frame_id_vel);
+          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, pub_gps_time_ref, frame_id, frame_id_vel);
         }
       }
 
