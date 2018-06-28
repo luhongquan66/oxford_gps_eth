@@ -412,7 +412,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
   EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
-  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, (double)packet.heading * -1e-6);
+  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
   EXPECT_EQ(g_msg_imu.get().orientation.y, q.y());
@@ -423,15 +423,15 @@ TEST(Main, imu)
   EXPECT_EQ(g_msg_imu.get().angular_velocity.x, (double)packet.gyro_x *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.y, (double)packet.gyro_y *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.z, (double)packet.gyro_z * -1e-5);
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.000436332313); // x
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.000436332313); // y
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.000436332313); // z
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0004); // x
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0004); // y
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0004); // z
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[0], 0.0174532925); // x
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[4], 0.0174532925); // y
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[8], 0.0174532925); // z
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.0); // z
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0); // z
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[8], 0.0); // z
 
   // Set orientation covariance on channel 5
   memset(&packet.chan, 0x00, sizeof(packet.chan));
@@ -447,7 +447,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
   EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
-  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, (double)packet.heading * -1e-6);
+  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
   EXPECT_EQ(g_msg_imu.get().orientation.y, q.y());
@@ -458,12 +458,12 @@ TEST(Main, imu)
   EXPECT_EQ(g_msg_imu.get().angular_velocity.x, (double)packet.gyro_x *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.y, (double)packet.gyro_y *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.z, (double)packet.gyro_z * -1e-5);
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.000436332313); // x
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.000436332313); // y
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.000436332313); // z
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0004); // x
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0004); // y
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0004); // z
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.0); // z
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0); // z
   EXPECT_EQ(g_msg_imu.get().orientation_covariance[0], SQUARE(packet.chan.chan5.acc_roll    * 1e-5)); // x
   EXPECT_EQ(g_msg_imu.get().orientation_covariance[4], SQUARE(packet.chan.chan5.acc_pitch   * 1e-5)); // y
   EXPECT_EQ(g_msg_imu.get().orientation_covariance[8], SQUARE(packet.chan.chan5.acc_heading * 1e-5)); // z
@@ -482,7 +482,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
   EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
-  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, (double)packet.heading * -1e-6);
+  q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
   EXPECT_EQ(g_msg_imu.get().orientation.y, q.y());
@@ -493,15 +493,15 @@ TEST(Main, imu)
   EXPECT_EQ(g_msg_imu.get().angular_velocity.x, (double)packet.gyro_x *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.y, (double)packet.gyro_y *  1e-5);
   EXPECT_EQ(g_msg_imu.get().angular_velocity.z, (double)packet.gyro_z * -1e-5);
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.000436332313); // x
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.000436332313); // y
-  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.000436332313); // z
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0004); // x
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0004); // y
-  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0004); // z
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[0], 0.0174532925); // x
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[4], 0.0174532925); // y
-  EXPECT_EQ(g_msg_imu.get().orientation_covariance[8], 0.0174532925); // z
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().angular_velocity_covariance[8], 0.0); // z
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[4], 0.0); // y
+  EXPECT_EQ(g_msg_imu.get().linear_acceleration_covariance[8], 0.0); // z
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[0], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[4], 0.0); // x
+  EXPECT_EQ(g_msg_imu.get().orientation_covariance[8], 0.0); // x
 }
 
 // Run all the tests that were declared with TEST()
