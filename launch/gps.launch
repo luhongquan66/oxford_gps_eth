@@ -10,8 +10,8 @@
   <arg name="ip_address"   default="" />
   <arg name="port"         default="3000" />
   <arg name="frame_id"     default="gps" />
-  <arg name="frame_id_vel" default="utm" />
-  
+  <arg name="frame_id_vel" default="enu" />
+
   <!-- Start the node -->
   <node pkg="oxford_gps_eth" type="gps_node" name="gps_node" respawn="$(arg respawn)" required="$(arg required)" output="$(arg output)">
     <param name="interface"    value="$(arg interface)" />
@@ -20,5 +20,5 @@
     <param name="frame_id"     value="$(arg frame_id)" />
     <param name="frame_id_vel" value="$(arg frame_id_vel)" />
   </node>
-  
+
 </launch>
