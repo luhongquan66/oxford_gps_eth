@@ -26,8 +26,9 @@
 // Parameters
 std::string g_ip_address = "";
 int g_port = 3000;
-std::string g_frame_id = "gps";
-std::string g_frame_id_vel = "utm";
+std::string g_frame_id_gps = "gps";
+std::string g_frame_id_vel = "enu";
+std::string g_frame_id_odom = "base_footprint";
 
 // Subscribed topics
 ros::Subscriber g_sub_fix;
@@ -182,9 +183,9 @@ TEST(Main, header)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_STREQ(g_msg_vel.get().header.frame_id.c_str(), g_frame_id_vel.c_str());
-  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_EQ(g_msg_fix.get().header.stamp, g_msg_vel.get().header.stamp);
   EXPECT_EQ(g_msg_fix.get().header.stamp, g_msg_imu.get().header.stamp);
   EXPECT_NE(g_msg_fix.get().header.stamp, ros::Time(0));
@@ -210,7 +211,7 @@ TEST(Main, fix)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_EQ(g_msg_fix.get().status.status, sensor_msgs::NavSatStatus::STATUS_NO_FIX);
   EXPECT_EQ(g_msg_fix.get().status.service, sensor_msgs::NavSatStatus::SERVICE_GPS);
   EXPECT_EQ(g_msg_fix.get().latitude, packet.latitude * (180 / M_PI));
@@ -237,7 +238,7 @@ TEST(Main, fix)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_EQ(g_msg_fix.get().status.status, sensor_msgs::NavSatStatus::STATUS_GBAS_FIX);
   EXPECT_EQ(g_msg_fix.get().status.service, sensor_msgs::NavSatStatus::SERVICE_GPS);
   EXPECT_EQ(g_msg_fix.get().latitude, packet.latitude * (180 / M_PI));
@@ -267,7 +268,7 @@ TEST(Main, fix)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_EQ(g_msg_fix.get().status.status, sensor_msgs::NavSatStatus::STATUS_GBAS_FIX);
   EXPECT_EQ(g_msg_fix.get().status.service, sensor_msgs::NavSatStatus::SERVICE_GPS);
   EXPECT_EQ(g_msg_fix.get().latitude, packet.latitude * (180 / M_PI));
@@ -297,7 +298,7 @@ TEST(Main, fix)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_fix.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   EXPECT_EQ(g_msg_fix.get().status.status, sensor_msgs::NavSatStatus::STATUS_GBAS_FIX);
   EXPECT_EQ(g_msg_fix.get().status.service, sensor_msgs::NavSatStatus::SERVICE_GPS);
   EXPECT_EQ(g_msg_fix.get().latitude, packet.latitude * (180 / M_PI));
@@ -411,7 +412,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
@@ -446,7 +447,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
@@ -481,7 +482,7 @@ TEST(Main, imu)
   ASSERT_TRUE(g_msg_fix.valid());
   ASSERT_TRUE(g_msg_vel.valid());
   ASSERT_TRUE(g_msg_imu.valid());
-  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id.c_str());
+  EXPECT_STREQ(g_msg_imu.get().header.frame_id.c_str(), g_frame_id_gps.c_str());
   q.setRPY((double)packet.roll * 1e-6, (double)packet.pitch * 1e-6, M_PI_2 - (double)packet.heading * 1e-6);
   EXPECT_EQ(g_msg_imu.get().orientation.w, q.w());
   EXPECT_EQ(g_msg_imu.get().orientation.x, q.x());
@@ -514,8 +515,9 @@ int main(int argc, char **argv)
   ros::NodeHandle priv_nh("~");
   priv_nh.getParam("ip_address", g_ip_address);
   priv_nh.getParam("port", g_port);
-  priv_nh.getParam("frame_id", g_frame_id);
+  priv_nh.getParam("frame_id_gps", g_frame_id_gps);
   priv_nh.getParam("frame_id_vel", g_frame_id_vel);
+  priv_nh.getParam("frame_id_odom", g_frame_id_odom);
   if (g_ip_address.empty()) {
     g_ip_address = "127.0.0.1";
   }
