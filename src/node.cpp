@@ -122,11 +122,10 @@ static inline double SQUARE(double x) { return x * x; }
 #define OXFORD_DISPLAY_INFO 0
 #endif
 
-std::map<int, std::string> pos_type_map;
+std::map<int, std::string> pos_mode_map;
 std::map<int, std::string> nav_status_map;
-std::string pos_type;
-std::string nav_status;
-void initPosTypeMap(std::map<int, std::string>& map)
+
+void initPosModeMap(std::map<int, std::string>& map)
 {
   map[MODE_NONE] = map[MODE_NO_DATA] = map[MODE_BLANKED] = map[MODE_NOT_RECOGNISED] = map[MODE_UNKNOWN] = "NONE";
   map[MODE_SEARCH] = "SEARCHING";
@@ -167,7 +166,7 @@ static inline double toUtcTime(uint32_t gps_minutes, uint16_t gps_ms)
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
                                 ros::Publisher &pub_imu, ros::Publisher &pub_odom, ros::Publisher &pub_pos_type,
                                 ros::Publisher &pub_nav_status, ros::Publisher &pub_gps_time_ref, const std::string &frame_id,
-                                const std::string &frame_id_vel)
+                                const std::string &frame_id_vel, const std::string &frame_id_odom)
 {
   static uint8_t fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
   static uint8_t position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -176,12 +175,24 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
   static double velocity_covariance[3];
   static uint8_t orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
   static double orientation_covariance[3];
+  static uint8_t pos_mode = 0;
+  static int none_type_count = 0;
 
   ros::Time stamp = ros::Time::now();
 
   switch (packet->channel) {
     case 0:
-      pos_type = pos_type_map[packet->chan.chan0.position_mode];
+      if (packet->chan.chan0.position_mode != MODE_NONE) {
+        pos_mode = packet->chan.chan0.position_mode;
+        none_type_count = 0;
+      } else {
+        if (none_type_count > 2) {
+          none_type_count = 0;
+          pos_mode = MODE_NONE;
+        } else {
+          none_type_count++;
+        }
+      }
 
       if (packet->chan.chan0.gps_minutes > 1000) { // Documentation says invalid if < 1000
         sensor_msgs::TimeReference gps_time_ref_msg;
@@ -191,15 +202,19 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
         pub_gps_time_ref.publish(gps_time_ref_msg);
       }
 
-      switch (packet->chan.chan0.position_mode) {
+      switch (pos_mode) {
         case MODE_DIFFERENTIAL:
         case MODE_DIFFERENTIAL_PP:
+        case MODE_DIFFERENTIAL_GX:
+        case MODE_DIFFERENTIAL_IX:
         case MODE_RTK_FLOAT:
-        case MODE_RTK_INTEGER:
         case MODE_RTK_FLOAT_PP:
+        case MODE_RTK_FLOAT_GX:
+        case MODE_RTK_FLOAT_IX:
+        case MODE_RTK_INTEGER:
         case MODE_RTK_INTEGER_PP:
-        case MODE_DOPPLER_PP:
-        case MODE_SPS_PP:
+        case MODE_RTK_INTEGER_GX:
+        case MODE_RTK_INTEGER_IX:
           fix_status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
           break;
         case MODE_OMNISTAR_VBS:
@@ -210,6 +225,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
           fix_status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
           break;
         case MODE_SPS:
+        case MODE_SPS_PP:
+        case MODE_SPS_GX:
+        case MODE_SPS_IX:
           fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
           break;
         case MODE_NONE:
@@ -308,9 +326,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
       break;
   }
   std_msgs::String str_msg;
-  str_msg.data = pos_type;
+  str_msg.data = pos_mode_map[pos_mode];
   pub_pos_type.publish(str_msg);
-  str_msg.data = nav_status;
+  str_msg.data = nav_status_map[packet->nav_status];
   pub_nav_status.publish(str_msg);
 
   if (packet->nav_status == 4) {
@@ -386,7 +404,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     nav_msgs::Odometry msg_odom;
     msg_odom.header.stamp = stamp;
     msg_odom.header.frame_id = "utm";
-    msg_odom.child_frame_id = frame_id;
+    msg_odom.child_frame_id = frame_id_odom;
     msg_odom.pose.pose.position.x = utm_x;
     msg_odom.pose.pose.position.y = utm_y;
     msg_odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(grid_heading);
@@ -435,11 +453,14 @@ int main(int argc, char **argv)
   int port = 3000;
   priv_nh.getParam("port", port);
 
-  std::string frame_id = "gps";
-  priv_nh.getParam("frame_id", frame_id);
+  std::string frame_id_gps = "gps";
+  priv_nh.getParam("frame_id_gps", frame_id_gps);
 
   std::string frame_id_vel = "enu";
   priv_nh.getParam("frame_id_vel", frame_id_vel);
+
+  std::string frame_id_odom = "base_footprint";
+  priv_nh.getParam("frame_id_odom", frame_id_odom);
 
   if (port > UINT16_MAX) {
     ROS_ERROR("Port %u greater than maximum value of %u", port, UINT16_MAX);
@@ -471,7 +492,7 @@ int main(int argc, char **argv)
     Packet packet;
     sockaddr source;
     bool first = true;
-    initPosTypeMap(pos_type_map);
+    initPosModeMap(pos_mode_map);
     initNavStatusMap(nav_status_map);
 
     // Loop until shutdown
@@ -482,7 +503,7 @@ int main(int argc, char **argv)
             first = false;
             ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
           }
-          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, frame_id, frame_id_vel);
+          handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, frame_id_gps, frame_id_vel, frame_id_odom);
         }
       }
 
