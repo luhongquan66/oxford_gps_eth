@@ -19,6 +19,7 @@
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>gps_common</depend>
   <depend>tf</depend>
 
   <exec_depend>roslaunch</exec_depend>
