@@ -165,7 +165,7 @@ static inline double toUtcTime(uint32_t gps_minutes, uint16_t gps_ms)
 
 static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, ros::Publisher &pub_vel,
                                 ros::Publisher &pub_imu, ros::Publisher &pub_odom, ros::Publisher &pub_pos_type,
-                                ros::Publisher &pub_nav_status, ros::Publisher &pub_gps_time_ref, const std::string &frame_id,
+                                ros::Publisher &pub_nav_status, ros::Publisher &pub_gps_time_ref, const std::string & frame_id_gps,
                                 const std::string &frame_id_vel, const std::string &frame_id_odom)
 {
   static uint8_t fix_status = sensor_msgs::NavSatStatus::STATUS_FIX;
@@ -352,7 +352,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
 
     sensor_msgs::NavSatFix msg_fix;
     msg_fix.header.stamp = stamp;
-    msg_fix.header.frame_id = frame_id;
+    msg_fix.header.frame_id = frame_id_gps;
     msg_fix.latitude = packet->latitude * (180 / M_PI);
     msg_fix.longitude = packet->longitude * (180 / M_PI);
     msg_fix.altitude = packet->altitude;
@@ -383,7 +383,7 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     q.setRPY((double)packet->roll * 1e-6, (double)packet->pitch * 1e-6, enu_heading);
     sensor_msgs::Imu msg_imu;
     msg_imu.header.stamp = stamp;
-    msg_imu.header.frame_id = frame_id;
+    msg_imu.header.frame_id = frame_id_gps;
     msg_imu.linear_acceleration.x = (double)packet->accel_x *  1e-4;
     msg_imu.linear_acceleration.y = (double)packet->accel_y *  1e-4;
     msg_imu.linear_acceleration.z = (double)packet->accel_z * -1e-4;
