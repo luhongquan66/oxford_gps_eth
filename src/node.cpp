@@ -122,34 +122,57 @@ static inline double SQUARE(double x) { return x * x; }
 #define OXFORD_DISPLAY_INFO 0
 #endif
 
-std::map<int, std::string> pos_mode_map;
-std::map<int, std::string> nav_status_map;
+static const std::map<uint8_t, std::string> pos_mode_map = {
+  {MODE_NONE, "NONE"},
+  {MODE_NO_DATA, "NONE"},
+  {MODE_BLANKED, "NONE"},
+  {MODE_SEARCH, "SEARCHING"},
+  {MODE_NOT_RECOGNISED, "NONE"},
+  {MODE_UNKNOWN, "NONE"},
+  {MODE_DOPPLER, "DOPPLER"},
+  {MODE_DOPPLER_PP, "DOPPLER"},
+  {MODE_DOPPLER_GX, "DOPPLER"},
+  {MODE_DOPPLER_IX, "DOPPLER"},
+  {MODE_SPS, "POINT_POSITION"},
+  {MODE_SPS_PP, "POINT_POSITION"},
+  {MODE_SPS_GX, "POINT_POSITION"},
+  {MODE_SPS_IX, "POINT_POSITION"},
+  {MODE_DIFFERENTIAL, "DIFF_PSEUDORANGE"},
+  {MODE_DIFFERENTIAL_PP, "DIFF_PSEUDORANGE"},
+  {MODE_DIFFERENTIAL_GX, "DIFF_PSEUDORANGE"},
+  {MODE_DIFFERENTIAL_IX, "DIFF_PSEUDORANGE"},
+  {MODE_RTK_FLOAT, "RTK_FLOAT"},
+  {MODE_RTK_FLOAT_PP, "RTK_FLOAT"},
+  {MODE_RTK_FLOAT_GX, "RTK_FLOAT"},
+  {MODE_RTK_FLOAT_IX, "RTK_FLOAT"},
+  {MODE_RTK_INTEGER, "RTK_INTEGER"},
+  {MODE_RTK_INTEGER_PP, "RTK_INTEGER"},
+  {MODE_RTK_INTEGER_GX, "RTK_INTEGER"},
+  {MODE_RTK_INTEGER_IX, "RTK_INTEGER"},
+  {MODE_WAAS, "WAAS"},
+  {MODE_OMNISTAR_VBS, "OMNISTAR_VBS"},
+  {MODE_OMNISTAR_HP, "OMNISTAR_HP"},
+  {MODE_OMNISTAR_XP, "OMNISTAR_XP"},
+  {MODE_CDGPS, "CANADA_DGPS"},
+  {MODE_PPP_CONVERGING, "PPP_CONVERGING"},
+  {MODE_PPP, "PPP"}
+};
 
-void initPosModeMap(std::map<int, std::string>& map)
-{
-  map[MODE_NONE] = map[MODE_NO_DATA] = map[MODE_BLANKED] = map[MODE_NOT_RECOGNISED] = map[MODE_UNKNOWN] = "NONE";
-  map[MODE_SEARCH] = "SEARCHING";
-  map[MODE_DOPPLER] = map[MODE_DOPPLER_PP] = map[MODE_DOPPLER_GX] = map[MODE_DOPPLER_IX] = "DOPPLER";
-  map[MODE_SPS] = map[MODE_SPS_PP] = map[MODE_SPS_GX] = map[MODE_SPS_IX] = "POINT_POSITION";
-  map[MODE_DIFFERENTIAL] = map[MODE_DIFFERENTIAL_PP] = map[MODE_DIFFERENTIAL_GX] = map[MODE_DIFFERENTIAL_IX] = "DIFF_PSEUDORANGE";
-  map[MODE_RTK_FLOAT] = map[MODE_RTK_FLOAT_PP] = map[MODE_RTK_FLOAT_GX] = map[MODE_RTK_FLOAT_IX] = "RTK_FLOAT";
-  map[MODE_RTK_INTEGER] = map[MODE_RTK_INTEGER_PP] = map[MODE_RTK_INTEGER_GX] = map[MODE_RTK_INTEGER_IX] = "RTK_INTEGER";
-  map[MODE_WAAS] = "WAAS";
-  map[MODE_OMNISTAR_VBS] = "OMNISTAR_VBS";
-  map[MODE_OMNISTAR_HP] = "OMNISTAR_HP";
-  map[MODE_OMNISTAR_XP] = "OMNISTAR_XP";
-  map[MODE_CDGPS] = "CANADA_DGPS";
-  map[MODE_PPP_CONVERGING] = "PPP_CONVERGING";
-  map[MODE_PPP] = "PPP";
-}
+static const std::map<uint8_t, std::string> nav_status_map = {
+  {0, "INVALID"},
+  {1, "IMU_ONLY"},
+  {2, "INITIALIZING"},
+  {3, "LOCKING"},
+  {4, "READY"},
+};
 
-void initNavStatusMap(std::map<int, std::string>& map)
-{
-  map[0] = "INVALID";
-  map[1] = "IMU_ONLY";
-  map[2] = "INITIALIZING";
-  map[3] = "LOCKING";
-  map[4] = "READY";
+static inline void mapLookup(const std::map<uint8_t, std::string>& map, uint8_t key, std::string& val) {
+  std::map<uint8_t, std::string>::const_iterator it = map.find(key);
+  if (it != map.end()) {
+    val = map.at(key);
+  } else {
+    val = "UNKNOWN";
+  }
 }
 
 static inline double getZoneMeridian(const std::string& utm_zone)
@@ -243,10 +266,10 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
       }
 #if OXFORD_DISPLAY_INFO
     ROS_INFO("Num Sats: %u, Position mode: %u, Velocity mode: %u, Orientation mode: %u",
-                 packet->chan.chan0.num_sats,
-                 packet->chan.chan0.position_mode,
-                 packet->chan.chan0.velocity_mode,
-                 packet->chan.chan0.orientation_mode);
+             packet->chan.chan0.num_sats,
+             packet->chan.chan0.position_mode,
+             packet->chan.chan0.velocity_mode,
+             packet->chan.chan0.orientation_mode);
 #endif
       break;
     case 3:
@@ -257,9 +280,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
         position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
         ROS_INFO("Position accuracy: North: %umm, East: %umm, Down: %umm",
-                   packet->chan.chan3.acc_position_north,
-                   packet->chan.chan3.acc_position_east,
-                   packet->chan.chan3.acc_position_down);
+                 packet->chan.chan3.acc_position_north,
+                 packet->chan.chan3.acc_position_east,
+                 packet->chan.chan3.acc_position_down);
 #endif
       } else {
         position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -273,9 +296,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
         velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
         ROS_INFO("Velocity accuracy: North: %umm/s, East: %umm/s, Down: %umm/s",
-                   packet->chan.chan4.acc_velocity_north,
-                   packet->chan.chan4.acc_velocity_east,
-                   packet->chan.chan4.acc_velocity_down);
+                 packet->chan.chan4.acc_velocity_north,
+                 packet->chan.chan4.acc_velocity_east,
+                 packet->chan.chan4.acc_velocity_down);
 #endif
       } else {
         velocity_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -290,9 +313,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
         orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 #if OXFORD_DISPLAY_INFO
         ROS_INFO("Velocity accuracy: Heading: %frad, Pitch: %frad, Roll: %frad",
-                   (double)packet->chan.chan5.acc_heading * 1e-5,
-                   (double)packet->chan.chan5.acc_pitch * 1e-5,
-                   (double)packet->chan.chan5.acc_roll * 1e-5);
+                 (double)packet->chan.chan5.acc_heading * 1e-5,
+                 (double)packet->chan.chan5.acc_pitch * 1e-5,
+                 (double)packet->chan.chan5.acc_roll * 1e-5);
 #endif
       } else {
         orientation_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
@@ -320,15 +343,15 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
     case 48:
 #if OXFORD_DISPLAY_INFO
       ROS_INFO("HDOP: %0.1f, PDOP: %0.1f",
-                 (double)packet->chan.chan48.HDOP * 1e-1,
-                 (double)packet->chan.chan48.PDOP * 1e-1);
+               (double)packet->chan.chan48.HDOP * 1e-1,
+               (double)packet->chan.chan48.PDOP * 1e-1);
 #endif
       break;
   }
   std_msgs::String str_msg;
-  str_msg.data = pos_mode_map[pos_mode];
+  mapLookup(pos_mode_map, pos_mode, str_msg.data);
   pub_pos_type.publish(str_msg);
-  str_msg.data = nav_status_map[packet->nav_status];
+  mapLookup(nav_status_map, packet->nav_status, str_msg.data);
   pub_nav_status.publish(str_msg);
 
   if (packet->nav_status == 4) {
@@ -492,8 +515,6 @@ int main(int argc, char **argv)
     Packet packet;
     sockaddr source;
     bool first = true;
-    initPosModeMap(pos_mode_map);
-    initNavStatusMap(nav_status_map);
 
     // Loop until shutdown
     while (ros::ok()) {
