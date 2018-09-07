@@ -122,7 +122,7 @@ static inline double SQUARE(double x) { return x * x; }
 #define OXFORD_DISPLAY_INFO 0
 #endif
 
-static const std::map<uint8_t, std::string> pos_mode_map = {
+static const std::map<uint8_t, std::string> POS_MODE_MAP = {
   {MODE_NONE, "NONE"},
   {MODE_NO_DATA, "NONE"},
   {MODE_BLANKED, "NONE"},
@@ -158,7 +158,7 @@ static const std::map<uint8_t, std::string> pos_mode_map = {
   {MODE_PPP, "PPP"}
 };
 
-static const std::map<uint8_t, std::string> nav_status_map = {
+static const std::map<uint8_t, std::string> NAV_STATUS_MAP = {
   {0, "INVALID"},
   {1, "IMU_ONLY"},
   {2, "INITIALIZING"},
@@ -349,9 +349,9 @@ static inline void handlePacket(const Packet *packet, ros::Publisher &pub_fix, r
       break;
   }
   std_msgs::String str_msg;
-  mapLookup(pos_mode_map, pos_mode, str_msg.data);
+  mapLookup(POS_MODE_MAP, pos_mode, str_msg.data);
   pub_pos_type.publish(str_msg);
-  mapLookup(nav_status_map, packet->nav_status, str_msg.data);
+  mapLookup(NAV_STATUS_MAP, packet->nav_status, str_msg.data);
   pub_nav_status.publish(str_msg);
 
   if (packet->nav_status == 4) {
