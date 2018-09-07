@@ -10,6 +10,11 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  message(STATUS "Enabling coverage testing")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+endif()
+
 catkin_package(
 )
 
