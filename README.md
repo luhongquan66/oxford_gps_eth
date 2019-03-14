@@ -44,3 +44,5 @@ I see ```Connected to Oxford GPS at <ip_address>:3000```, but GPS position and v
 
 Data is not published until the OxTS unit reports itself as being completely initialized.  Drive around faster than 5 m/s for a short period of time after powering on the OxTS unit to initialize the sensor.  The `gps/nav_status` string topic indicates the status of the initialization process. Once this string shows "READY", the GPS position and velocity messages should start publishing.
 
+
+git test.
