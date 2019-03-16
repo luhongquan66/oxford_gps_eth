@@ -49,7 +49,9 @@ Data is not published until the OxTS unit reports itself as being completely ini
 ```
   mkdir -p oxfordDriver/src  && cd oxfordDriver/src
   git clone https://github.com/luhongquan66/oxford_gps_eth.git
-  git ck -b neuav origin/neuav
+  cd oxford_gps_eth/
+  git checkout -b neuav origin/neuav
+  cd ../..
   sudo apt install ros-kinetic-gps-common
   catkin_make
 ```
