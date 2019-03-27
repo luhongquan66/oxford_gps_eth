@@ -36,10 +36,15 @@ set_target_properties(${PROJECT_NAME}_gps_node PROPERTIES OUTPUT_NAME gps_node P
 
 add_executable(${PROJECT_NAME}_tcp_receive src/tcp_receive.cpp)
 target_link_libraries(${PROJECT_NAME}_tcp_receive ${catkin_LIBRARIES})
+set_target_properties(${PROJECT_NAME}_tcp_receive PROPERTIES OUTPUT_NAME tcp_receive PREFIX "")
 
 install(TARGETS ${PROJECT_NAME}_gps_node
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+install(TARGETS ${PROJECT_NAME}_tcp_receive
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 install(DIRECTORY launch
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
