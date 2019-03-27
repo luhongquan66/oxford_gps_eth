@@ -21,23 +21,10 @@
 <arg name="ip_addr_tcp_client"    default="" />
 <arg name="port_tcp_client"          default="" />
 
-  <!-- Start the node -->
-  <node pkg="oxford_gps_eth" type="gps_node" name="gps_node" respawn="$(arg respawn)" required="$(arg required)" output="$(arg output)">
-    <param name="interface"     value="$(arg interface)" />
-    <param name="ip_address"    value="$(arg ip_address)" />
-    <param name="port"          value="$(arg port)" />
+  <node pkg="oxford_gps_eth" type="tcp_receive" name="tcp_receive" respawn="$(arg respawn)" required="$(arg required)" output="$(arg output)">
     <param name="frame_id_gps"  value="$(arg frame_id_gps)" />
     <param name="frame_id_vel"  value="$(arg frame_id_vel)" />
     <param name="frame_id_odom" value="$(arg frame_id_odom)" />
-
-    <param name="interface_tcp_server"     value="$(arg interface_tcp_server)" />
-    <param name="ip_addr_tcp_server"    value="$(arg ip_addr_tcp_server)" />
-    <param name="port_tcp_server"          value="$(arg port_tcp_server)" />
-    <param name="interface_tcp_client"     value="$(arg interface_tcp_client)" />
-    <param name="ip_addr_tcp_client"    value="$(arg ip_addr_tcp_client)" />
-    <param name="port_tcp_client"          value="$(arg port_tcp_client)" />
   </node>
-
-
 
 </launch>

@@ -415,13 +415,15 @@ int main(int argc, char *argv[])
     remote_addr.sin_addr.s_addr=inet_addr("127.0.0.1");
     remote_addr.sin_port=htons(65500);
 
+
+
     if((client_sockfd=socket(PF_INET,SOCK_STREAM,IPPROTO_TCP))<0)
     {
-        ROS_FATAL("Failed to open socket");
+        ROS_FATAL("Failed to open TCPsocket");
     }
     if(connect(client_sockfd,(struct sockaddr *)&remote_addr,sizeof(struct sockaddr))<0)
     {
-        ROS_FATAL("Failed to connect socket");
+        ROS_FATAL("Failed to connect TCPsocket");
     }
 
     while (ros::ok()) {
