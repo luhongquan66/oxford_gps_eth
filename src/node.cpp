@@ -34,6 +34,12 @@
 
 // ROS
 #include <ros/ros.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 
 // ROS messages
 #include <sensor_msgs/NavSatFix.h>
@@ -55,6 +61,7 @@
 
 // Ethernet
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 // UINT16_MAX is not defined by default in Ubuntu Saucy
 #ifndef UINT16_MAX
@@ -92,7 +99,34 @@ static inline bool openSocket(const std::string &interface, const std::string &i
   return false;
 }
 
-static inline int readSocket(int fd, unsigned int timeout, void *data, size_t size, sockaddr *source_ptr = NULL)
+static inline bool openTCPServerSocket(const std::string &interface, const std::string &ip_addr,
+                                       uint16_t port, int *fd_ptr, sockaddr_in *sock_ptr)
+{
+    int fd;
+    fd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    if(fd != -1){
+        if (interface.length()) {
+          if (!setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, interface.c_str(), interface.length()) == 0) {
+            close(fd);
+            return false;
+          }
+        }
+        memset(sock_ptr, 0, sizeof(sockaddr_in));
+        sock_ptr->sin_family = AF_INET;
+        sock_ptr->sin_port = htons(port);
+        if (!inet_aton(ip_addr.c_str(), &sock_ptr->sin_addr)) {
+          sock_ptr->sin_addr.s_addr = INADDR_ANY; // Invalid address, use ANY
+        }
+        if (bind(fd, (sockaddr*)sock_ptr, sizeof(sockaddr)) == 0) {
+          *fd_ptr = fd;
+          return true;
+        }
+    }
+    return  false;
+}
+
+static inline int readSocket(int fd, unsigned int timeout, void *data, size_t size,
+                             sockaddr *source_ptr = NULL)
 {
   if (fd >= 0) {
     fd_set fds;
@@ -499,8 +533,36 @@ int main(int argc, char **argv)
     ROS_INFO("Preparing to listen on port %u", port);
   }
 
+  //Set TCP
+  std::string interface_tcp_server = "";
+  priv_nh.getParam("interface_tcp_server", interface_tcp_server);
+
+  std::string ip_addr_tcp_server = "127.0.0.1";
+  priv_nh.getParam("ip_addr_tcp_server", ip_addr_tcp_server);
+
+  int port_tcp_server = 65500;
+  priv_nh.getParam("port_tcp_server", port_tcp_server);
+
+  std::string interface_tcp_client = "";
+  priv_nh.getParam("interface_tcp_client", interface_tcp_client);
+
+  std::string ip_addr_tcp_client = "127.0.0.1";
+  priv_nh.getParam("ip_addr_tcp_client", ip_addr_tcp_client);
+
+  int port_tcp_client = 65501;
+  priv_nh.getParam("port_tcp_client", port_tcp_client);
+
   int fd;
   sockaddr_in sock;
+
+  //Set TCP
+  int server_sockfd;
+  int client_sockfd;
+  sockaddr_in server_sock;
+  sockaddr_in client_sock;
+  bool sendTCPPacket = false;
+//  char buf[BUFSIZ]; //BUFSIZ system defalut cache size.
+
   if (openSocket(interface, ip_addr, port, &fd, &sock)) {
     // Setup Publishers
     ros::Publisher pub_fix = node.advertise<sensor_msgs::NavSatFix>("gps/fix", 2);
@@ -516,6 +578,24 @@ int main(int argc, char **argv)
     sockaddr source;
     bool first = true;
 
+    if(openTCPServerSocket(interface_tcp_server,ip_addr_tcp_server,
+                           port_tcp_server,&server_sockfd,&server_sock)){
+        if(listen(server_sockfd,5) < 0){
+            ROS_FATAL("Listen error");
+        }else{
+            socklen_t sin_size = sizeof (client_sock);
+
+            if((client_sockfd = accept(server_sockfd,(struct sockaddr*)&client_sock, &sin_size)) < 0)
+            {
+                ROS_FATAL("Accept error");
+            }else{
+                sendTCPPacket= true;
+            }
+        }
+    }else{
+        ROS_FATAL("Failed to open socketTCP");
+    }
+
     // Loop until shutdown
     while (ros::ok()) {
       if (readSocket(fd, 10, &packet, sizeof(packet), &source) >= sizeof(packet)) {
@@ -528,12 +608,25 @@ int main(int argc, char **argv)
         }
       }
 
+      if(sendTCPPacket){
+          Packet tcp_packet;
+          memcpy(&tcp_packet,&packet,sizeof (packet));
+//          char buf[5]={'H','e','l','l','o'};
+
+          if(send(client_sockfd, (char*)&tcp_packet, sizeof (tcp_packet), 0) < 0)
+          {
+              ROS_FATAL("Write error");
+          }
+      }
+
       // Handle callbacks
       ros::spinOnce();
     }
 
     // Close socket
     close(fd);
+    close(server_sockfd);
+    close(client_sockfd);
   } else {
     ROS_FATAL("Failed to open socket");
     ros::WallDuration(1.0).sleep();

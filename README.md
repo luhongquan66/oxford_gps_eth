@@ -45,3 +45,15 @@ I see ```Connected to Oxford GPS at <ip_address>:3000```, but GPS position and v
 Data is not published until the OxTS unit reports itself as being completely initialized.  Drive around faster than 5 m/s for a short period of time after powering on the OxTS unit to initialize the sensor.  The `gps/nav_status` string topic indicates the status of the initialization process. Once this string shows "READY", the GPS position and velocity messages should start publishing.
 
 
+### 安装方法
+```
+  mkdir -p oxfordDriver/src  && cd oxfordDriver/src
+  git clone https://github.com/luhongquan66/oxford_gps_eth.git
+  cd oxford_gps_eth/
+  git checkout -b neuav origin/neuav
+  cd ../..
+  如果没有安装下面这个ros包编译会出错
+  sudo apt install ros-kinetic-gps-common
+  catkin_make
+```
+
