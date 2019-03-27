@@ -605,18 +605,17 @@ int main(int argc, char **argv)
             ROS_INFO("Connected to Oxford GPS at %s:%u", inet_ntoa(((sockaddr_in*)&source)->sin_addr), htons(((sockaddr_in*)&source)->sin_port));
           }
           handlePacket(&packet, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, frame_id_gps, frame_id_vel, frame_id_odom);
-        }
-      }
+          if(sendTCPPacket){
+              Packet tcp_packet;
+              memcpy(&tcp_packet,&packet,sizeof (packet));
+    //          char buf[5]={'H','e','l','l','o'};
 
-      if(sendTCPPacket){
-          Packet tcp_packet;
-          memcpy(&tcp_packet,&packet,sizeof (packet));
-//          char buf[5]={'H','e','l','l','o'};
-
-          if(send(client_sockfd, (char*)&tcp_packet, sizeof (tcp_packet), 0) < 0)
-          {
-              ROS_FATAL("Write error");
+              if(send(client_sockfd, (char*)&tcp_packet, sizeof (tcp_packet), 0) < 0)
+              {
+                  ROS_FATAL("Write error");
+              }
           }
+        }
       }
 
       // Handle callbacks
