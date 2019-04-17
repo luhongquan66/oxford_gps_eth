@@ -428,10 +428,11 @@ int main(int argc, char *argv[])
 
     while (ros::ok()) {
         Packet receivedPacket;
-        if(recv(client_sockfd,&receivedPacket,sizeof (receivedPacket),0) > 0)
+        if(recv(client_sockfd,&receivedPacket,BUFSIZ,0) > 0)
         {
             handlePacket(&receivedPacket, pub_fix, pub_vel, pub_imu, pub_odom, pub_pos_type, pub_nav_status, pub_gps_time_ref, frame_id_gps, frame_id_vel, frame_id_odom);
             ROS_INFO("TCP received data.");
+
         }
         ros::spinOnce();
     }
